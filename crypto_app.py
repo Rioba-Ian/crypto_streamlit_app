@@ -1,17 +1,17 @@
 from numpy import positive
-import streamlit as st 
-from PIL import Image 
-import pandas as pd 
+import streamlit as st
+from PIL import Image
+import pandas as pd
 import base64
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 from bs4 import BeautifulSoup
 import requests
-import json 
+import json
 
-# page layout 
+# page layout
 st.set_page_config(layout="wide")
 
-# title 
+# title
 
 image = Image.open('logo.jpg')
 
@@ -22,7 +22,7 @@ st.markdown("""
 This app retrieves cryptocurrency prices for the top 100 cryptocurrency from the **CoinMarketCap**!
 """)
 
-# about 
+# about
 expander_bar = st.expander("About")
 expander_bar.markdown("""
 * **Python libraries:** base64, pandas, streamlit, numpy, matplotlib, seaborn, BeautifulSoup, requests, json, time
@@ -30,17 +30,20 @@ expander_bar.markdown("""
 * **Credit:** Web scraper adapted from the Medium article *[Web Scraping Crypto Prices With Python](https://towardsdatascience.com/web-scraping-crypto-prices-with-python-41072ea5b5bf)* written by [Bryan Feng](https://medium.com/@bryanf).
 """)
 
-# page layout 
+# page layout
 col1 = st.sidebar
-col2, col3 = st.columns((2,1))
+col2, col3 = st.columns((2, 1))
 
-# side bar + main panel 
+# side bar + main panel
 col1.header('Input Options')
 
 # sidebar - currency price unit
-currency_price_unit = col1.selectbox('Select currency for price', ('USD', 'BTC', 'ETH'))
+currency_price_unit = col1.selectbox(
+    'Select currency for price', ('USD', 'BTC', 'ETH'))
 
-# web scrpaing of coin market cap data 
+# web scrpaing of coin market cap data
+
+
 @st.cache
 def load_data():
     cmc = requests.get('https://coinmarketcap.com')
@@ -49,12 +52,13 @@ def load_data():
     data = soup.find('script', id='__NEXT_DATA__', type='application/json')
     coins = {}
     coin_data = json.loads(data.contents[0])
-    listings = coin_data['props']['initialState']['cryptocurrency']['listingLatest']['data']
+    listings = json.loads(coin_data['props']['initialState'])[
+        'cryptocurrency']['listingLatest']['data']
     attributes = listings[0]["keysArr"]
     index_of_id = attributes.index("id")
     index_of_slug = attributes.index("slug")
     for i in listings[1:]:
-      coins[str(i[index_of_id])] = i[index_of_slug]
+        coins[str(i[index_of_id])] = i[index_of_slug]
 
     coin_name = []
     coin_symbol = []
@@ -86,20 +90,20 @@ def load_data():
     index_of_quote_currency_volume_24h = attributes.index(
         f"quote.{currency_price_unit}.volume24h"
     )
-    
 
     for i in listings[1:]:
-      coin_name.append(i[index_of_slug])
-      coin_symbol.append(i[index_of_symbol])
+        coin_name.append(i[index_of_slug])
+        coin_symbol.append(i[index_of_symbol])
 
-      price.append(i[index_of_quote_currency_price])
-      percent_change_1h.append(i[index_of_quote_currency_price_1h])
-      percent_change_24h.append(i[index_of_quote_currency_price_24h])
-      percent_change_7d.append(i[index_of_quote_currency_price_7d])
-      market_cap.append(i[index_of_quote_currency_market_cap])
-      volume_24h.append(i[index_of_quote_currency_volume_24h])
+        price.append(i[index_of_quote_currency_price])
+        percent_change_1h.append(i[index_of_quote_currency_price_1h])
+        percent_change_24h.append(i[index_of_quote_currency_price_24h])
+        percent_change_7d.append(i[index_of_quote_currency_price_7d])
+        market_cap.append(i[index_of_quote_currency_market_cap])
+        volume_24h.append(i[index_of_quote_currency_volume_24h])
 
-    df = pd.DataFrame(columns=['coin_name', 'coin_symbol', 'market_cap', 'percent_change_1h', 'percent_change_24h', 'percent_change_7d', 'price', 'volume_24h'])
+    df = pd.DataFrame(columns=['coin_name', 'coin_symbol', 'market_cap', 'percent_change_1h',
+                      'percent_change_24h', 'percent_change_7d', 'price', 'volume_24h'])
     df['coin_name'] = coin_name
     df['coin_symbol'] = coin_symbol
     df['price'] = price
@@ -110,20 +114,22 @@ def load_data():
     df['volume_24h'] = volume_24h
     return df
 
+
 df = load_data()
 
 # sidebar - crypto selections
 sorted_coin = sorted(df['coin_symbol'])
 selected_coin = col1.multiselect('Cryptocurrency', sorted_coin, sorted_coin)
 
-df_selected_coin = df[(df['coin_symbol'].isin(selected_coin))] #selected data 
+df_selected_coin = df[(df['coin_symbol'].isin(selected_coin))]  # selected data
 
 # sidebar - number of coins to display
 num_coin = col1.slider('Display Top N coins', 1, 100, 100)
 df_coins = df_selected_coin[:num_coin]
 
-# side-bar percent change timeframe 
-percent_timeframe = col1.selectbox('Percent change time frame', ['7d','24h','1h'])
+# side-bar percent change timeframe
+percent_timeframe = col1.selectbox(
+    'Percent change time frame', ['7d', '24h', '1h'])
 percent_dict = {
     "7d": "percent_change_7d",
     "24h": "percent_change_24h",
@@ -145,16 +151,20 @@ col2.write(
 
 col2.dataframe(df_coins)
 
-# download csv data 
+# download csv data
+
+
 def filedownload(df):
     csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode() # strings <-> bytes conversions
+    # strings <-> bytes conversions
+    b64 = base64.b64encode(csv.encode()).decode()
     href = f'<a href="data:file/csv;base64,{b64}" download="crypto.csv">Download CSV File</a>'
-    return href 
+    return href
+
 
 col2.markdown(filedownload(df_selected_coin), unsafe_allow_html=True)
 
-# prepare data for bar plot 
+# prepare data for bar plot
 col2.subheader("Table of %Price change")
 df_change = pd.concat(
     [
@@ -166,44 +176,47 @@ df_change = pd.concat(
     axis=1,
 )
 df_change = df_change.set_index('coin_symbol')
-df_change['positive_percent_change_1h'] = df_change['percent_change_1h']>0
-df_change['positive_percent_change_24h'] = df_change['percent_change_24h']>0
-df_change['positive_percent_change_7d'] = df_change['percent_change_7d']>0
+df_change['positive_percent_change_1h'] = df_change['percent_change_1h'] > 0
+df_change['positive_percent_change_24h'] = df_change['percent_change_24h'] > 0
+df_change['positive_percent_change_7d'] = df_change['percent_change_7d'] > 0
 col2.dataframe(df_change)
 
-# conditional creation of bar plot data frame 
+# conditional creation of bar plot data frame
 col3.subheader("bar plot of % price change")
 
 if percent_timeframe == '7d':
     if sort_values == 'Yes':
         df_change = df_change.sort_values(by=['percent_change_7d'])
     col3.write("7 days period")
-    plt.figure(figsize=(5,25))
+    plt.figure(figsize=(5, 25))
     plt.subplots_adjust(top=1, bottom=0)
     df_change["percent_change_7d"].plot(
         kind="barh",
-        color=df_change.positive_percent_change_7d.map({True: 'g', False: "r"}),
+        color=df_change.positive_percent_change_7d.map(
+            {True: 'g', False: "r"}),
     )
     col3.pyplot(plt)
 elif percent_timeframe == "24h":
     if sort_values == 'Yes':
         df_change = df_change.sort_values(by=['percent_change_24h'])
     col3.write("24 hours period")
-    plt.figure(figsize=(5,25))
+    plt.figure(figsize=(5, 25))
     plt.subplots_adjust(top=1, bottom=0)
     df_change["percent_change_24h"].plot(
         kind="barh",
-        color=df_change.positive_percent_change_24h.map({True: 'g', False: "r"}),
+        color=df_change.positive_percent_change_24h.map(
+            {True: 'g', False: "r"}),
     )
     col3.pyplot(plt)
 else:
     if sort_values == 'Yes':
         df_change = df_change.sort_values(by=['percent_change_1h'])
     col3.write("1 hour period")
-    plt.figure(figsize=(5,25))
+    plt.figure(figsize=(5, 25))
     plt.subplots_adjust(top=1, bottom=0)
     df_change["percent_change_1h"].plot(
         kind="barh",
-        color=df_change.positive_percent_change_1h.map({True: 'g', False: "r"}),
+        color=df_change.positive_percent_change_1h.map(
+            {True: 'g', False: "r"}),
     )
     col3.pyplot(plt)
